@@ -10,7 +10,11 @@
     targetLanguage: 'zh-CN',
     autoTranslate: true,
     contextPages: 3,
-    maxImageSide: 2400,
+    maxImageSide: 1800,
+    jpegQuality: 0.88,
+    requestTimeoutSec: 180,
+    maxOutputTokens: 2048,
+    llamaCppOptimizations: true,
     minImageWidth: 500,
     minImageHeight: 700,
     showOriginal: false
@@ -276,9 +280,11 @@
     return await response.blob();
   }
 
-  async function prepareImage(blob, maxSide) {
+  async function prepareImage(blob, maxSide, quality) {
     const bitmap = await createImageBitmap(blob);
-    const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+    const safeMaxSide = Math.max(800, Math.min(5000, Number(maxSide) || 1800));
+    const safeQuality = Math.max(0.5, Math.min(1, Number(quality) || 0.88));
+    const scale = Math.min(1, safeMaxSide / Math.max(bitmap.width, bitmap.height));
     const width = Math.max(1, Math.round(bitmap.width * scale));
     const height = Math.max(1, Math.round(bitmap.height * scale));
     const canvas = document.createElement('canvas');
@@ -289,9 +295,15 @@
     ctx.fillRect(0, 0, width, height);
     ctx.drawImage(bitmap, 0, 0, width, height);
     bitmap.close();
-    const out = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+    const out = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', safeQuality));
     if (!out) throw new Error('图片压缩失败');
-    return { blob: out, width, height };
+    return { blob: out, width, height, quality: safeQuality };
+  }
+
+  function formatBytes(bytes) {
+    if (!Number.isFinite(bytes) || bytes <= 0) return '0 KB';
+    if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
   }
 
   async function blobToBase64(blob) {
@@ -317,6 +329,7 @@
         type: 'MODEL_REQUEST',
         url: settings.apiUrl,
         headers: settings.apiHeaders,
+        timeoutMs: Math.max(30, Number(settings.requestTimeoutSec) || 180) * 1000,
         body
       });
     } catch (error) {
@@ -409,7 +422,7 @@
       context
     });
 
-    return {
+    const request = {
       model: settings.model || undefined,
       messages: [
         { role: 'system', content: schemaInstruction },
@@ -424,8 +437,18 @@
           ]
         }
       ],
-      temperature: 0.2
+      temperature: 0.1,
+      max_tokens: Math.max(256, Math.min(8192, Number(settings.maxOutputTokens) || 2048)),
+      stream: false
     };
+
+    if (settings.llamaCppOptimizations) {
+      request.chat_template_kwargs = { enable_thinking: false };
+      request.reasoning_effort = 'none';
+      request.response_format = { type: 'json_object' };
+    }
+
+    return request;
   }
 
   function extractJsonText(text) {
@@ -490,14 +513,26 @@
       return;
     }
 
-    setStatus('处理当前页…');
+    setStatus('压缩当前页…');
     const original = await elementToBlob(state.el);
-    const prepared = await prepareImage(original, Number(settings.maxImageSide));
+    const prepared = await prepareImage(original, Number(settings.maxImageSide), Number(settings.jpegQuality));
+    setStatus(`处理当前页… ${prepared.width}×${prepared.height} / ${formatBytes(prepared.blob.size)}`);
     const hash = await hashBlob(prepared.blob);
     state.hash = hash;
     state.pageRef = parsePageRef(state.el);
 
-    const cacheKey = [location.origin, state.pageRef.bookId || '', state.pageRef.pageNumber ?? '', hash, settings.apiMode, settings.apiUrl, settings.model, settings.targetLanguage].join('|');
+    const cacheKey = [
+      location.origin,
+      state.pageRef.bookId || '',
+      state.pageRef.pageNumber ?? '',
+      hash,
+      settings.apiMode,
+      settings.apiUrl,
+      settings.model,
+      settings.targetLanguage,
+      settings.llamaCppOptimizations ? 'llama-opt' : 'plain',
+      settings.maxOutputTokens
+    ].join('|');
     const cached = translationCache[cacheKey];
     if (cached?.blocks?.length) {
       state.blocks = cached.blocks;
