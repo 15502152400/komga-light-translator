@@ -1,0 +1,13 @@
+:root { color-scheme: light dark; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+body { margin: 0; width: 320px; }
+main { padding: 16px; }
+h1 { font-size: 16px; margin: 0 0 12px; }
+button { width: 100%; padding: 10px 12px; border: 0; border-radius: 8px; cursor: pointer; margin-top: 10px; font-weight: 600; }
+button:not(.secondary) { background: #2563eb; color: white; }
+button.secondary { background: rgba(127,127,127,.18); color: inherit; }
+button:disabled { opacity: .55; cursor: default; }
+.muted, .tip, .status { font-size: 12px; line-height: 1.45; }
+.muted { opacity: .72; overflow-wrap: anywhere; }
+.tip { opacity: .62; margin: 12px 0 0; }
+.status { margin-top: 10px; min-height: 17px; }
+.status.error { color: #dc2626; }

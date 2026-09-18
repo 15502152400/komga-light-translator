@@ -1,0 +1,57 @@
+#klt-root {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483640;
+  pointer-events: none;
+  font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans CJK SC", sans-serif;
+}
+.klt-block {
+  position: fixed;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 6px;
+  overflow: hidden;
+  border-radius: 5px;
+  background: rgba(255,255,255,.93);
+  color: #111;
+  border: 1px solid rgba(0,0,0,.16);
+  box-shadow: 0 1px 4px rgba(0,0,0,.18);
+  text-align: center;
+  line-height: 1.18;
+  overflow-wrap: anywhere;
+  pointer-events: auto;
+  cursor: default;
+}
+.klt-block .klt-translation { font-weight: 600; }
+.klt-block .klt-original { margin-top: 3px; opacity: .58; font-size: .74em; font-weight: 400; }
+#klt-toolbar {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 2147483646;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 999px;
+  background: rgba(18,18,18,.86);
+  color: white;
+  box-shadow: 0 4px 18px rgba(0,0,0,.35);
+  backdrop-filter: blur(8px);
+}
+#klt-toolbar button {
+  border: 0;
+  border-radius: 999px;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 10px;
+  background: rgba(255,255,255,.14);
+  color: white;
+  cursor: pointer;
+  font: 600 12px system-ui, sans-serif;
+}
+#klt-toolbar button.klt-active { background: #2563eb; }
+#klt-status { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; opacity: .82; padding: 0 3px; }

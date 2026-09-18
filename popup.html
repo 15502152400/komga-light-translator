@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Komga Light Translator</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main>
+    <h1>Komga Light Translator</h1>
+    <div id="site" class="muted">正在读取当前页面…</div>
+    <button id="toggle" disabled>启用此站点</button>
+    <button id="settings" class="secondary">模型与上下文设置</button>
+    <p class="tip">首次对某个 Komga 地址启用后，以后打开该站点会自动加载扩展。</p>
+    <div id="status" class="status"></div>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>

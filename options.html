@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Komga Light Translator 设置</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <main>
+    <h1>Komga Light Translator</h1>
+    <p class="lead">一个多模态接口完成看图、识字、翻译和定位。扩展负责上下文、缓存与覆盖显示。</p>
+
+    <section>
+      <h2>多模态模型</h2>
+      <label>接口模式
+        <select id="apiMode">
+          <option value="generic">通用 JSON 接口</option>
+          <option value="openai-chat">OpenAI-compatible Chat Completions</option>
+        </select>
+      </label>
+      <label>API URL
+        <input id="apiUrl" type="url" placeholder="http://127.0.0.1:8000/v1/chat/completions">
+      </label>
+      <label>Model（可选）
+        <input id="model" type="text" placeholder="qwen-vl / gpt-vision / 自定义模型名">
+      </label>
+      <label>Headers（JSON）
+        <textarea id="apiHeaders" rows="4" placeholder='{"Authorization":"Bearer xxx"}'></textarea>
+      </label>
+      <label>目标语言
+        <input id="targetLanguage" type="text" placeholder="zh-CN">
+      </label>
+    </section>
+
+    <section>
+      <h2>上下文</h2>
+      <label>最近完整页面数
+        <input id="contextPages" type="number" min="0" max="10">
+      </label>
+      <p class="hint">除此之外，扩展会持久保存滚动剧情摘要、人物、人名/术语和角色语气记忆。重新打开 Edge 后仍可继续使用。</p>
+    </section>
+
+    <section>
+      <h2>阅读</h2>
+      <label class="check"><input id="autoTranslate" type="checkbox"> 页面出现时自动翻译</label>
+      <label>发送给模型的最大图片边长（px）
+        <input id="maxImageSide" type="number" min="800" max="5000" step="100">
+      </label>
+      <label>最小候选漫画宽度（px）
+        <input id="minImageWidth" type="number" min="200" max="2000">
+      </label>
+      <label>最小候选漫画高度（px）
+        <input id="minImageHeight" type="number" min="200" max="3000">
+      </label>
+      <label class="check"><input id="showOriginal" type="checkbox"> 译文下方同时显示识别出的原文</label>
+    </section>
+
+    <section>
+      <h2>通用 JSON 接口约定</h2>
+      <details open>
+        <summary>请求</summary>
+        <pre>{
+  "model": "可选",
+  "targetLanguage": "zh-CN",
+  "image": {
+    "mimeType": "image/jpeg",
+    "dataBase64": "...",
+    "width": 1600,
+    "height": 2400
+  },
+  "page": {
+    "bookId": "...",
+    "pageNumber": 31
+  },
+  "context": {
+    "rollingSummary": "...",
+    "recentPages": [...],
+    "translationMemory": {
+      "characters": {},
+      "terms": {},
+      "speakerStyles": {}
+    }
+  }
+}</pre>
+      </details>
+      <details>
+        <summary>返回</summary>
+        <pre>{
+  "blocks": [
+    {
+      "id": "b1",
+      "source": "あいつは誰だ？",
+      "translation": "那家伙是谁？",
+      "x": 0.61,
+      "y": 0.08,
+      "width": 0.22,
+      "height": 0.10
+    }
+  ],
+  "pageSummary": "本页极短摘要",
+  "contextUpdate": {
+    "rollingSummary": "更新后的精简剧情摘要",
+    "characters": {},
+    "terms": {},
+    "speakerStyles": {}
+  }
+}</pre>
+        <p>x / y / width / height 使用 0~1 的归一化坐标。</p>
+      </details>
+    </section>
+
+    <div class="actions">
+      <button id="save">保存并授权接口</button>
+      <button id="clearCache" class="secondary">清空翻译缓存</button>
+      <button id="clearContext" class="secondary">清空上下文</button>
+    </div>
+    <div id="status" class="status"></div>
+  </main>
+  <script src="options.js"></script>
+</body>
+</html>

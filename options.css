@@ -1,0 +1,20 @@
+:root { color-scheme: light dark; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+body { margin: 0; }
+main { width: min(820px, calc(100% - 32px)); margin: 32px auto 80px; }
+h1 { margin-bottom: 4px; }
+.lead { opacity: .72; margin-top: 0; }
+section { margin-top: 28px; padding: 18px; border: 1px solid rgba(127,127,127,.28); border-radius: 12px; }
+h2 { font-size: 17px; margin: 0 0 16px; }
+label { display: block; font-size: 13px; font-weight: 600; margin-top: 14px; }
+input[type="url"], input[type="text"], input[type="number"], select, textarea { width: 100%; box-sizing: border-box; margin-top: 6px; padding: 9px 10px; border-radius: 8px; border: 1px solid rgba(127,127,127,.45); background: transparent; color: inherit; font: inherit; }
+textarea { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.check { display: flex; gap: 9px; align-items: center; font-weight: 500; }
+pre { overflow-x: auto; padding: 12px; border-radius: 8px; background: rgba(127,127,127,.12); font-size: 12px; }
+details p { font-size: 13px; opacity: .72; }
+.actions { display: flex; gap: 10px; margin-top: 22px; }
+button { border: 0; border-radius: 8px; padding: 10px 14px; cursor: pointer; font-weight: 700; background: #2563eb; color: white; }
+button.secondary { background: rgba(127,127,127,.18); color: inherit; }
+.status { margin-top: 12px; min-height: 20px; font-size: 13px; }
+.status.error { color: #dc2626; }
+
+.hint { font-size: 13px; opacity: .72; line-height: 1.55; }
