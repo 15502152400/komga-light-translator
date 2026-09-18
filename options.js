@@ -6,7 +6,11 @@ const DEFAULTS = {
   targetLanguage: 'zh-CN',
   autoTranslate: true,
   contextPages: 3,
-  maxImageSide: 2400,
+  maxImageSide: 1800,
+  jpegQuality: 0.88,
+  requestTimeoutSec: 180,
+  maxOutputTokens: 2048,
+  llamaCppOptimizations: true,
   minImageWidth: 500,
   minImageHeight: 700,
   showOriginal: false
@@ -56,7 +60,10 @@ document.getElementById('save').addEventListener('click', async () => {
     }
 
     settings.contextPages = Math.max(0, Math.min(10, Number(settings.contextPages) || 0));
-    settings.maxImageSide = Math.max(800, Math.min(5000, Number(settings.maxImageSide) || 2400));
+    settings.maxImageSide = Math.max(800, Math.min(5000, Number(settings.maxImageSide) || 1800));
+    settings.jpegQuality = Math.max(0.5, Math.min(1, Number(settings.jpegQuality) || 0.88));
+    settings.requestTimeoutSec = Math.max(30, Math.min(900, Number(settings.requestTimeoutSec) || 180));
+    settings.maxOutputTokens = Math.max(256, Math.min(8192, Number(settings.maxOutputTokens) || 2048));
     settings.minImageWidth = Math.max(200, Number(settings.minImageWidth) || 500);
     settings.minImageHeight = Math.max(200, Number(settings.minImageHeight) || 700);
     settings.apiHeaders = validateHeaders(settings.apiHeaders);
