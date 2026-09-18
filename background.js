@@ -1,5 +1,7 @@
 const CONTENT_SCRIPT_ID_PREFIX = 'komga-light-translator-';
-const MODEL_REQUEST_TIMEOUT_MS = 60000;
+const DEFAULT_MODEL_REQUEST_TIMEOUT_MS = 180000;
+const MIN_MODEL_REQUEST_TIMEOUT_MS = 30000;
+const MAX_MODEL_REQUEST_TIMEOUT_MS = 900000;
 
 function scriptIdForOrigin(origin) {
   const bytes = new TextEncoder().encode(origin);
@@ -71,9 +73,15 @@ function endpointLabel(endpoint) {
   return `${endpoint.origin}${endpoint.pathname}`;
 }
 
-function formatNetworkError(error, endpoint) {
+function clampTimeoutMs(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return DEFAULT_MODEL_REQUEST_TIMEOUT_MS;
+  return Math.max(MIN_MODEL_REQUEST_TIMEOUT_MS, Math.min(MAX_MODEL_REQUEST_TIMEOUT_MS, n));
+}
+
+function formatNetworkError(error, endpoint, timeoutMs) {
   if (error?.name === 'AbortError') {
-    return `模型接口连接或响应超时（${Math.round(MODEL_REQUEST_TIMEOUT_MS / 1000)} 秒）：${endpointLabel(endpoint)}`;
+    return `模型接口连接或响应超时（${Math.round(timeoutMs / 1000)} 秒）：${endpointLabel(endpoint)}`;
   }
 
   const causeCode = error?.cause?.code ? `，底层代码 ${error.cause.code}` : '';
@@ -88,7 +96,7 @@ function formatNetworkError(error, endpoint) {
   ].join(' ');
 }
 
-async function proxyJsonRequest(url, headers, body) {
+async function proxyJsonRequest(url, headers, body, requestedTimeoutMs) {
   if (!url) throw new Error('模型接口 URL 未配置');
   const endpoint = new URL(url);
   if (!['http:', 'https:'].includes(endpoint.protocol)) {
@@ -101,8 +109,9 @@ async function proxyJsonRequest(url, headers, body) {
     throw new Error(`没有访问接口 ${endpoint.origin} 的权限，请在扩展设置中重新保存并授权`);
   }
 
+  const timeoutMs = clampTimeoutMs(requestedTimeoutMs);
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), MODEL_REQUEST_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   let response;
 
   try {
@@ -117,7 +126,7 @@ async function proxyJsonRequest(url, headers, body) {
       signal: controller.signal
     });
   } catch (error) {
-    throw new Error(formatNetworkError(error, endpoint));
+    throw new Error(formatNetworkError(error, endpoint, timeoutMs));
   } finally {
     clearTimeout(timeout);
   }
@@ -145,7 +154,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case 'DISABLE_SITE':
         return { ok: true, value: await disableSite(message.origin) };
       case 'MODEL_REQUEST':
-        return { ok: true, value: await proxyJsonRequest(message.url, message.headers, message.body) };
+        return { ok: true, value: await proxyJsonRequest(message.url, message.headers, message.body, message.timeoutMs) };
       case 'PING':
         return { ok: true };
       default:
