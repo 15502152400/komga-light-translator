@@ -19,6 +19,8 @@
   const CONTEXT_VERSION = 1;
   const CACHE_LIMIT = 120;
   const CONTEXT_PAGE_LIMIT = 30;
+  const RETRY_BASE_MS = 15000;
+  const RETRY_MAX_MS = 5 * 60 * 1000;
 
   let settings = { ...DEFAULTS };
   let root;
@@ -161,6 +163,13 @@
     try { return decodeURIComponent(value); } catch (_) { return value; }
   }
 
+  function resetFailureState(state) {
+    state.errorAt = 0;
+    state.errorCount = 0;
+    state.retryAfter = 0;
+    state.lastError = '';
+  }
+
   async function scan(force) {
     if (!force && !autoTranslate) return;
     const list = candidates().slice(0, 2);
@@ -176,8 +185,17 @@
         state.hash = null;
         state.sourceKey = key;
         state.pageRef = parsePageRef(el);
+        resetFailureState(state);
       }
-      if (!state || (!state.done && !state.queued && !state.processing)) enqueue(el);
+
+      if (force && state && !state.processing) {
+        state.done = false;
+        state.retryAfter = 0;
+        state.errorCount = 0;
+      }
+
+      const retryReady = !state || force || !(state.retryAfter > Date.now());
+      if (retryReady && (!state || (!state.done && !state.queued && !state.processing))) enqueue(el);
     }
   }
 
@@ -192,12 +210,17 @@
         processing: false,
         done: false,
         blocks: [],
-        hash: null
+        hash: null,
+        errorAt: 0,
+        errorCount: 0,
+        retryAfter: 0,
+        lastError: ''
       };
       stateByElement.set(el, state);
       activeStates.add(state);
     }
     if (state.queued || state.processing || state.done) return;
+    if (state.retryAfter > Date.now()) return;
     state.queued = true;
     pending.push(state);
     runQueue();
@@ -215,10 +238,19 @@
         try {
           await processPage(state);
           state.done = true;
+          resetFailureState(state);
         } catch (error) {
+          const message = error?.message || String(error);
           console.warn('[KLT]', error);
-          setStatus(`错误: ${error.message || error}`);
           state.errorAt = Date.now();
+          state.errorCount = (state.errorCount || 0) + 1;
+          const delay = Math.min(RETRY_MAX_MS, RETRY_BASE_MS * (2 ** Math.min(state.errorCount - 1, 5)));
+          state.retryAfter = state.errorAt + delay;
+          state.lastError = message;
+          setStatus(`错误: ${message}（${Math.ceil(delay / 1000)}秒后重试）`);
+          setTimeout(() => {
+            if (document.contains(state.el) && !state.done && !state.processing) scheduleScan(0);
+          }, delay + 100);
         } finally {
           state.processing = false;
         }
@@ -279,12 +311,21 @@
   }
 
   async function sendModel(body) {
-    const result = await chrome.runtime.sendMessage({
-      type: 'MODEL_REQUEST',
-      url: settings.apiUrl,
-      headers: settings.apiHeaders,
-      body
-    });
+    let result;
+    try {
+      result = await chrome.runtime.sendMessage({
+        type: 'MODEL_REQUEST',
+        url: settings.apiUrl,
+        headers: settings.apiHeaders,
+        body
+      });
+    } catch (error) {
+      const message = error?.message || String(error);
+      if (/message port closed|receiving end does not exist|extension context invalidated/i.test(message)) {
+        throw new Error('扩展后台已重新加载或连接已断开，请刷新 Komga 页面后重试');
+      }
+      throw error;
+    }
     if (!result?.ok) throw new Error(result?.error || '扩展后台请求失败');
     return result.value;
   }
