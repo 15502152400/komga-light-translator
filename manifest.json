@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Komga Light Translator",
-  "version": "0.2.1",
-  "description": "Lightweight multimodal manga translation overlay with persistent context for Komga.",
+  "version": "0.3.0",
+  "description": "Lightweight multimodal manga translation overlay with configurable compression and persistent context for Komga.",
   "permissions": ["storage", "scripting", "activeTab"],
   "optional_host_permissions": ["http://*/*", "https://*/*"],
   "background": {
