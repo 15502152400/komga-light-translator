@@ -1,4 +1,5 @@
 const CONTENT_SCRIPT_ID_PREFIX = 'komga-light-translator-';
+const MODEL_REQUEST_TIMEOUT_MS = 60000;
 
 function scriptIdForOrigin(origin) {
   const bytes = new TextEncoder().encode(origin);
@@ -66,6 +67,27 @@ function headersFromSetting(raw) {
   }
 }
 
+function endpointLabel(endpoint) {
+  return `${endpoint.origin}${endpoint.pathname}`;
+}
+
+function formatNetworkError(error, endpoint) {
+  if (error?.name === 'AbortError') {
+    return `模型接口连接或响应超时（${Math.round(MODEL_REQUEST_TIMEOUT_MS / 1000)} 秒）：${endpointLabel(endpoint)}`;
+  }
+
+  const causeCode = error?.cause?.code ? `，底层代码 ${error.cause.code}` : '';
+  const browserMessage = error?.message && error.message !== 'Failed to fetch'
+    ? `；浏览器错误：${error.message}`
+    : '';
+
+  return [
+    `无法连接模型接口：${endpointLabel(endpoint)}${causeCode}${browserMessage}`,
+    '请检查接口 URL、模型服务是否启动、端口/反向代理是否可访问，以及 HTTPS 证书是否已被 Edge 信任。',
+    '如果接口使用自签名证书，请先在 Edge 中直接打开该接口域名并处理证书警告。'
+  ].join(' ');
+}
+
 async function proxyJsonRequest(url, headers, body) {
   if (!url) throw new Error('模型接口 URL 未配置');
   const endpoint = new URL(url);
@@ -79,15 +101,26 @@ async function proxyJsonRequest(url, headers, body) {
     throw new Error(`没有访问接口 ${endpoint.origin} 的权限，请在扩展设置中重新保存并授权`);
   }
 
-  const response = await fetch(endpoint.href, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...headersFromSetting(headers)
-    },
-    body: JSON.stringify(body),
-    cache: 'no-store'
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), MODEL_REQUEST_TIMEOUT_MS);
+  let response;
+
+  try {
+    response = await fetch(endpoint.href, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...headersFromSetting(headers)
+      },
+      body: JSON.stringify(body),
+      cache: 'no-store',
+      signal: controller.signal
+    });
+  } catch (error) {
+    throw new Error(formatNetworkError(error, endpoint));
+  } finally {
+    clearTimeout(timeout);
+  }
 
   const text = await response.text();
   let data;
