@@ -1,4 +1,5 @@
 const CONTENT_SCRIPT_ID_PREFIX = 'komga-light-translator-';
+const CONTENT_JS_FILES = ['page-guard.js', 'content.js'];
 const DEFAULT_MODEL_REQUEST_TIMEOUT_MS = 180000;
 const MIN_MODEL_REQUEST_TIMEOUT_MS = 30000;
 const MAX_MODEL_REQUEST_TIMEOUT_MS = 900000;
@@ -18,23 +19,31 @@ function matchPatternForOrigin(origin) {
   return `${url.protocol}//${url.host}/*`;
 }
 
-async function ensureSiteEnabled(origin) {
+async function registerSiteScripts(origin) {
   const match = matchPatternForOrigin(origin);
   const granted = await chrome.permissions.contains({ origins: [match] });
   if (!granted) throw new Error('未获得站点访问权限');
 
   const id = scriptIdForOrigin(origin);
   const existing = await chrome.scripting.getRegisteredContentScripts({ ids: [id] });
-  if (!existing.length) {
-    await chrome.scripting.registerContentScripts([{
-      id,
-      matches: [match],
-      js: ['content.js'],
-      css: ['content.css'],
-      runAt: 'document_idle',
-      persistAcrossSessions: true
-    }]);
+  if (existing.length) {
+    try {
+      await chrome.scripting.unregisterContentScripts({ ids: [id] });
+    } catch (_) {}
   }
+
+  await chrome.scripting.registerContentScripts([{
+    id,
+    matches: [match],
+    js: CONTENT_JS_FILES,
+    css: ['content.css'],
+    runAt: 'document_idle',
+    persistAcrossSessions: true
+  }]);
+}
+
+async function ensureSiteEnabled(origin) {
+  await registerSiteScripts(origin);
 
   const { enabledOrigins = [] } = await chrome.storage.local.get('enabledOrigins');
   if (!enabledOrigins.includes(origin)) {
@@ -42,6 +51,17 @@ async function ensureSiteEnabled(origin) {
     await chrome.storage.local.set({ enabledOrigins });
   }
   return true;
+}
+
+async function reconcileEnabledSites() {
+  const { enabledOrigins = [] } = await chrome.storage.local.get('enabledOrigins');
+  for (const origin of enabledOrigins) {
+    try {
+      await registerSiteScripts(origin);
+    } catch (error) {
+      console.warn('[KLT] 无法更新已启用站点脚本', origin, error);
+    }
+  }
 }
 
 async function disableSite(origin) {
@@ -165,3 +185,5 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   });
   return true;
 });
+
+reconcileEnabledSites().catch(error => console.warn('[KLT] 站点脚本更新失败', error));
