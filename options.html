@@ -9,7 +9,7 @@
 <body>
   <main>
     <h1>Komga Light Translator</h1>
-    <p class="lead">一个多模态接口完成看图、识字、翻译和定位。扩展负责上下文、缓存与覆盖显示。</p>
+    <p class="lead">一个多模态接口完成看图、识字、翻译和定位。扩展负责图片压缩、上下文、缓存与覆盖显示。</p>
 
     <section>
       <h2>多模态模型</h2>
@@ -23,7 +23,7 @@
         <input id="apiUrl" type="url" placeholder="http://127.0.0.1:8000/v1/chat/completions">
       </label>
       <label>Model（可选）
-        <input id="model" type="text" placeholder="qwen-vl / gpt-vision / 自定义模型名">
+        <input id="model" type="text" placeholder="qwen-vl / llama.cpp 模型 ID / 自定义模型名">
       </label>
       <label>Headers（JSON）
         <textarea id="apiHeaders" rows="4" placeholder='{"Authorization":"Bearer xxx"}'></textarea>
@@ -31,6 +31,14 @@
       <label>目标语言
         <input id="targetLanguage" type="text" placeholder="zh-CN">
       </label>
+      <label>模型请求超时（秒）
+        <input id="requestTimeoutSec" type="number" min="30" max="900" step="10">
+      </label>
+      <label>最大输出 Token
+        <input id="maxOutputTokens" type="number" min="256" max="8192" step="256">
+      </label>
+      <label class="check"><input id="llamaCppOptimizations" type="checkbox"> llama.cpp / Qwen 优化：关闭 thinking，并要求 JSON 输出</label>
+      <p class="hint">使用 llama.cpp + Qwen 多模态时建议开启。其他 OpenAI-compatible 服务如果不接受这些扩展参数，可以关闭。</p>
     </section>
 
     <section>
@@ -42,11 +50,15 @@
     </section>
 
     <section>
-      <h2>阅读</h2>
+      <h2>图片与阅读</h2>
       <label class="check"><input id="autoTranslate" type="checkbox"> 页面出现时自动翻译</label>
       <label>发送给模型的最大图片边长（px）
         <input id="maxImageSide" type="number" min="800" max="5000" step="100">
       </label>
+      <label>JPEG 压缩质量（0.50 ~ 1.00）
+        <input id="jpegQuality" type="number" min="0.50" max="1.00" step="0.01">
+      </label>
+      <p class="hint">大漫画推荐先用 1600~2000 px、0.85~0.90。边长越大、小字越清晰，但视觉推理更慢；JPEG 质量主要影响传输体积。</p>
       <label>最小候选漫画宽度（px）
         <input id="minImageWidth" type="number" min="200" max="2000">
       </label>
@@ -54,6 +66,16 @@
         <input id="minImageHeight" type="number" min="200" max="3000">
       </label>
       <label class="check"><input id="showOriginal" type="checkbox"> 译文下方同时显示识别出的原文</label>
+    </section>
+
+    <section>
+      <h2>推荐起点：llama.cpp + 大漫画页</h2>
+      <pre>最大图片边长：1800
+JPEG 质量：0.88
+请求超时：180 秒
+最大输出 Token：2048
+上下文页数：3
+llama.cpp / Qwen 优化：开启</pre>
     </section>
 
     <section>
@@ -66,8 +88,8 @@
   "image": {
     "mimeType": "image/jpeg",
     "dataBase64": "...",
-    "width": 1600,
-    "height": 2400
+    "width": 1200,
+    "height": 1800
   },
   "page": {
     "bookId": "...",
